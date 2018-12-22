@@ -5,6 +5,27 @@ class NeighbourhoodsController < ApplicationController
   def index
     @neighbourhoods = Neighbourhood.all
 
+    if params[:max_home_price].present?
+      @neighbourhoods = @neighbourhoods.where('home_price <= ?', params[:max_home_price])
+    end
+
+    if params[:min_home_price].present?
+      @neighbourhoods = @neighbourhoods.where('home_price >= ?', params[:min_home_price])
+    end
+
+    if params[:ranked_by].present?
+      # .to_sym converts a string to a symbol. For example, "a".to_sym becomes :a
+      # :desc - descendant
+      @neighbourhoods = @neighbourhoods.order(params[:ranked_by].to_sym => :desc)
+    end
+
+    if params[:near].present?
+      # Unlike the queries we saw earlier, the line below overwrites
+      # the @neighbourhoods variable. It will return only the nearest
+      # neighbourhood, without combining with the other filters.
+      @neighbourhoods = Location.nearest_neighbourhood(params[:near])
+    end
+
     render json: @neighbourhoods
   end
 
