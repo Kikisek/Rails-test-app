@@ -19,11 +19,11 @@ class NeighbourhoodsController < ApplicationController
       @neighbourhoods = @neighbourhoods.order(params[:ranked_by].to_sym => :desc)
     end
 
-    if params[:coords].present?
+    if params[:near].present?
       # Unlike the queries we saw earlier, the line below overwrites
       # the @neighbourhoods variable. It will return only the nearest
       # neighbourhood, without combining with the other filters.
-      @neighbourhoods = Location.nearest_neighbourhood(params[:coords])
+      @neighbourhoods = Location.nearest_neighbourhood(params[:near])
     end
 
     render json: @neighbourhoods

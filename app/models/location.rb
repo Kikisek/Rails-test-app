@@ -5,7 +5,7 @@ class Location < ApplicationRecord
   after_validation :reverse_geocode
 
   def self.nearest_neighbourhood(coords)
-      self.near(coords, 2, units: :km)&.first&.neighbourhood
+      self.near(coords, 2, units: :km).first.neighbourhood
   end
 
 end
