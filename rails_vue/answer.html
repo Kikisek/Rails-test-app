@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="sanitize.css">
+  <link rel="stylesheet" href="style.css">
+  <title>VueJS</title>
+</head>
+
+<body>
+
+  <h1>Neighbourhoods</h1>
+  <div id="app">
+
+    <div class="container">
+      <div class="neighbourhoods">
+
+        <!-- form for finding neighbourhoods with criteria  -->
+        <form action="" @submit.prevent="get_hoods">
+          <div class="form-grid">
+            <div class="form-field">
+              <div class="slidecontainer">
+                <label for="max_home_price">Min Home Price {{ user_choices.min_home_price }}</label>
+                <input type="range" min="100000" max="2000000" step="1000" v-model="user_choices.min_home_price" class="slider" id="myRange">
+              </div>
+            </div>
+            <div class="form-field">
+              <div class="slidecontainer">
+                <label for="max_home_price">Max Home Price {{ user_choices.max_home_price }}</label>
+                <input type="range" min="100000" max="2000000" step="1000" v-model="user_choices.max_home_price" class="slider" id="myRange">
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="min_home_price">Ranked By: </label>
+              <select v-model="user_choices.ranked_by">
+                <option v-for="option in ranked_by_choices" :value="option" :data-description="option">{{option}}</option>
+              </select>
+            </div>
+          </div>
+          <input type="submit" value="Get Hoods" />
+        </form>
+
+        <!-- form for finding neighbourhood with Lat Long  -->
+        <form action="" @submit.prevent="getHoodNear">
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="">Lat</label>
+              <input type="text" v-model="user_choices.lat">
+            </div>
+            <div class="form-field">
+              <label for="">Long</label>
+              <input type="text" v-model="user_choices.lng">
+            </div>
+          </div>
+          <input type="submit" value="Find Hood">
+        </form>
+
+        <!-- Card for Neighbourhood found by Lat Long  -->
+        <div v-if="currentHood" class="currentHood">
+          <h3>{{currentHood.name}}</h3>
+          <p>Avg Home Price: {{currentHood.home_price}}</p>
+          <p>Businesses: {{currentHood.num_businesses}}</p>
+          <p>Child care: {{currentHood.num_child_care}}</p>
+        </div>
+
+        <hr>
+
+        <!-- Cards for Neighbourhoods found by Criteria  -->
+        <ul>
+          <li class="hood" v-for="hood in neighbourhoods">
+            <h3>{{ hood.name }}</h3>
+            <p>Avg Home Price: {{hood.home_price}}</p>
+            <p>Businesses: {{hood.num_businesses}}</p>
+            <p>Child care: {{hood.num_child_care}}</p>
+          </li>
+        </ul>
+      </div>
+
+      <div id="map" class="map">
+        <!-- map here -->
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC1sVj9VNBD56WmOOVnCfTojizAExfSiRc" type="text/javascript"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+
+  <script>
+    // https://snazzymaps.com/
+    let mapColors = [{
+      "featureType": "landscape.natural",
+      "elementType": "geometry.fill",
+      "stylers": [{
+        "visibility": "on"
+      }, {
+        "color": "#e0efef"
+      }]
+    }, {
+      "featureType": "poi",
+      "elementType": "geometry.fill",
+      "stylers": [{
+        "visibility": "on"
+      }, {
+        "hue": "#1900ff"
+      }, {
+        "color": "#c0e8e8"
+      }]
+    }, {
+      "featureType": "road",
+      "elementType": "geometry",
+      "stylers": [{
+        "lightness": 100
+      }, {
+        "visibility": "simplified"
+      }]
+    }, {
+      "featureType": "road",
+      "elementType": "labels",
+      "stylers": [{
+        "visibility": "off"
+      }]
+    }, {
+      "featureType": "transit.line",
+      "elementType": "geometry",
+      "stylers": [{
+        "visibility": "on"
+      }, {
+        "lightness": 700
+      }]
+    }, {
+      "featureType": "water",
+      "elementType": "all",
+      "stylers": [{
+        "color": "#7dcdcd"
+      }]
+    }]
+    Vue.config.productionTip = false
+    // Set up Vue
+    var app = new Vue({
+      el: '#app',
+      data: {
+        ranked_by_choices: ['num_businesses', 'num_child_care', 'home_price', 'name'],
+        neighbourhoods: [],
+        user_choices: {
+          min_home_price: 200000,
+          max_home_price: 800000,
+          ranked_by: 'num_businesses',
+          lat: 43.6665196,
+          lng: -79.4882084
+        },
+        mapOptions: {
+          center: {
+            lat: 43.6425662,
+            lng: -79.3870568
+          },
+          zoom: 10,
+          gestureHandling: "cooperative",
+          styles: mapColors
+        },
+        currentHood: {}
+      },
+      mounted: function () {
+        this.loadMap()
+      },
+      methods: {
+        get_hoods() {
+          fetch(
+              `http://localhost:3000/neighbourhoods?max_home_price=${this.user_choices.max_home_price}&min_home_price=${this.user_choices.min_home_price}&ranked_by=${this.user_choices.ranked_by}`
+            )
+            .then(data => data.json())
+            .then(data => {
+              console.log(data)
+              this.neighbourhoods = data
+            })
+        },
+        getHoodNear() {
+          let latLng = `${parseFloat(this.user_choices.lat)},${parseFloat(this.user_choices.lng)}`
+          fetch(`http://localhost:3000/neighbourhoods?near=${latLng}`)
+            .then(data => data.json())
+            .then(data => {
+              console.log(data)
+              this.currentHood = data
+              this.mapOptions.center.lat = parseFloat(this.user_choices.lat)
+              this.mapOptions.center.lng = parseFloat(this.user_choices.lng)
+              this.mapOptions.zoom = 14
+              this.loadMap()
+              this.loadMarker()
+            })
+        },
+        loadMap() {
+          let mapDiv = document.getElementById('map')
+          this.map = new google.maps.Map(mapDiv, this.mapOptions)
+        },
+        loadMarker() {
+          let hood = new google.maps.Marker({
+            position: new google.maps.LatLng(parseFloat(this.user_choices.lat), parseFloat(this.user_choices.lng)),
+            map: this.map,
+            icon: './map-marker-icon2.png'
+          })
+        }
+      }
+    })
+    //JUNCTION - 43.6665196,-79.4882084 
+    //KENSINGTON - 43.6450066, -79.3981669
+    //DANFORTH - 43.6829816,-79.3625313
+    //43.6829856,-79.3450214
+    //FLEMO - 43.7156948,-79.3449771
+  </script>
+
+
+
+</body>
+
+</html>
